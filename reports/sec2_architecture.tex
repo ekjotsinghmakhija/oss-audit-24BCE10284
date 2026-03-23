@@ -1,0 +1,45 @@
+\section{Cryptographic Architecture and Filesystem Integration}
+
+\subsection{Content-Addressable Storage (CAS) Logic}
+Unlike traditional version control systems that store explicit deltas (differences) between file versions, Git operates as a pure content-addressable filesystem. Data retrieval is not based on arbitrary file paths, but on the cryptographic hash of the data itself.
+
+When a file is staged, Git computes a 160-bit SHA-1 hash (currently undergoing a transition to SHA-256 to mitigate collision vulnerabilities demonstrated in the SHAttered attack). The hashing function $H$ can be defined conceptually as:
+$$ H(x) = \text{SHA-1}(\text{type} + \text{space} + \text{size} + \backslash 0 + \text{content}) $$
+This design ensures \textit{inherent deduplication}. If two identical files exist in different directories, Git physically stores the blob only once, referencing the same memory address via the hash pointer.
+
+\newpage
+\subsection{The Directed Acyclic Graph (DAG) Topology}
+The entire state of a Git repository is mathematically structured as a Directed Acyclic Graph, $G = (V, E)$, where vertices $V$ are objects and edges $E$ are cryptographic pointers. 
+
+\begin{enumerate}
+    \item \textbf{Blobs ($V_{blob}$):} The raw byte-stream of file content.
+    \item \textbf{Trees ($V_{tree}$):} Analogous to UNIX directories. A tree maps standard string identifiers (filenames) to the SHA-1 hashes of Blobs or other Trees.
+    \item \textbf{Commits ($V_{commit}$):} An immutable snapshot of a single root Tree at a specific temporal coordinate, containing a pointer to its parent commit(s).
+\end{enumerate}
+Because $G$ is acyclic and cryptographically linked, modifying a historical commit $C_t$ fundamentally alters its hash, thereby invalidating all subsequent child commits $C_{t+n}$. This provides robust, blockchain-like tamper evidence.
+
+\subsection{Garbage Collection and Delta Compression (Packfiles)}
+While the CAS model is highly fault-tolerant, storing discrete snapshots of every file modification is storage-inefficient over time. To solve this, Git implements a background heuristic known as Garbage Collection (\texttt{git gc}).
+
+Git condenses loose objects into binary \texttt{.pack} files accompanied by \texttt{.idx} (index) files. During this phase, Git employs reverse delta compression. It stores the \textit{most recent} version of a file entirely, and stores older versions as reverse deltas. This is highly optimized for the standard developer workflow, where accessing the \texttt{HEAD} commit operates in $O(1)$ time complexity, while reconstructing historical states incurs an $O(k)$ overhead, where $k$ is the depth of the delta chain.
+
+\subsection{System Installation, Directories, and Update Lifecycle}
+At the OS level, Git is managed via standard Linux package managers. On Debian/Ubuntu environments, it is deployed via the APT utility (\texttt{sudo apt install git}), while Red Hat distributions utilize RPM/DNF (\texttt{sudo dnf install git}). 
+
+\textbf{Key System Directories:}
+\begin{itemize}
+    \item \textbf{Binaries:} The core executable resides at \texttt{/usr/bin/git}, with auxiliary shell scripts located in \texttt{/usr/lib/git-core}.
+    \item \textbf{System Configuration:} Global behavioral parameters are defined in \texttt{/etc/gitconfig}, which cascades down to the user-level \texttt{\textasciitilde/.gitconfig}.
+    \item \textbf{Logs:} Git does not natively write to \texttt{/var/log/syslog} because it operates transiently. Instead, logging is maintained locally within the repository at \texttt{.git/logs/HEAD} (the reflog).
+\end{itemize}
+
+\textbf{Service Management and Security Updates:}
+Git is a command-line utility, not a background daemon. Therefore, standard service commands (e.g., \texttt{systemctl restart git}) are invalid for the core client. However, to host a repository over a network without SSH, a Linux administrator can spawn the Git Daemon:
+\begin{lstlisting}[language=bash]
+sudo systemctl enable git-daemon@default.service
+sudo systemctl start git-daemon@default.service
+\end{lstlisting}
+The update model relies on the Linux distribution's maintainers. When a Common Vulnerabilities and Exposures (CVE) report is issued for Git, the open-source community patches the source tree. Distribution maintainers then backport the patch and push a secure binary to end-users via the \texttt{apt upgrade} lifecycle.
+
+\subsection{POSIX Security and Execution Context}
+Git does not run as an elevated daemon. It executes purely in user-space, adhering strictly to the POSIX security model of the Linux Virtual File System (VFS). Repository access controls are delegated entirely to the underlying operating system and transport protocols (e.g., OpenSSH). This drastically reduces the attack surface compared to centralized servers requiring dedicated user management subsystems.

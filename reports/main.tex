@@ -1,0 +1,90 @@
+\documentclass[11pt, a4paper]{article}
+
+% --- Academic & Technical Packages ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{amsfonts}
+\usepackage{amsmath}
+\usepackage[nopatch=footnote]{microtype} 
+\usepackage{xcolor}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{times}
+\usepackage{setspace}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{caption}
+
+% --- Formatting Constraints ---
+\geometry{a4paper, margin=1in}
+\onehalfspacing 
+
+% --- Title Formatting ---
+\titleformat{\section}{\Large\bfseries}{\thesection}{1em}{}
+\titleformat{\subsection}{\large\bfseries}{\thesubsection}{1em}{}
+
+% --- Technical Code Styling ---
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.97,0.97,0.97}
+
+\lstset{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{blue},
+    numberstyle=\tiny\color{gray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=tb,
+    numbers=left,
+    showstringspaces=false,
+    captionpos=b
+}
+
+\begin{document}
+
+% --- PAGE 1: FORMAL TITLE PAGE ---
+\begin{titlepage}
+    \centering
+    \vspace*{3cm}
+    \Huge \textbf{Cryptographic Sovereign Infrastructures} \\
+    \vspace{0.7cm}
+    \Large \textit{A Systems-Level Audit of the Git Distributed Version Control System: \\ Algorithmic Architecture, Legal Reciprocity, and POSIX Integration} \\
+    \vfill
+    \large
+    \textbf{Prepared by:} \\
+    Ekjot Singh \\
+    \textbf{Registration No:} 24BCE10284 \\
+    \textbf{Institution:} VIT Bhopal University \\
+    \texttt{ekjot.24bce10284@vitbhopal.ac.in} \\
+    \vspace{1cm}
+    \textbf{Course Domain:} Operating Systems and Open Source Software \\
+    \vfill
+    \textbf{Date:} \today
+\end{titlepage}
+
+% --- PAGE 2: FORMAL ABSTRACT ---
+\newpage
+\section*{Abstract and Executive Summary}
+\addcontentsline{toc}{section}{Abstract}
+This technical audit evaluates the Git Distributed Version Control System (DVCS) as a fundamental socio-technical artifact of modern computational infrastructure. Diverging from centralized, lock-based legacy systems, Git implements a decentralized, content-addressable storage model utilizing Directed Acyclic Graphs (DAGs) to ensure the cryptographic immutability of historical states. This document analyzes the systemic catalyst for Git's inception—the 2005 BitKeeper proprietary licensing schism—and evaluates the GNU General Public License (GPL) v2 as a reciprocal legal framework guaranteeing digital sovereignty. 
+
+Furthermore, we conduct a deep-dive algorithmic analysis of Git's implementation within the Linux Virtual File System (VFS), mathematically defining its object-oriented storage logic (blobs, trees, commits, and packfiles) and its utilization of zlib compression heuristics. Through a rigorous Big-$O$ comparative analysis against proprietary alternatives (e.g., Perforce) and a demonstration of POSIX shell automation for repository orchestration, this audit establishes Git not merely as a version control utility, but as a robust, distributed cryptographic ledger essential for global open-source innovation.
+
+\newpage
+\tableofcontents
+\newpage
+
+% --- CORE CHAPTERS ---
+\input{sec1_foundations}
+\input{sec2_architecture}
+\input{sec3_ecosystem}
+\input{sec4_comparative}
+\newpage
+\input{sec5_automation}
+
+\end{document}
