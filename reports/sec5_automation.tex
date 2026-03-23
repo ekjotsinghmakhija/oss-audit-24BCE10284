@@ -1,98 +1,334 @@
-\section{POSIX Shell Automation and Workflow Orchestration}
+\section{POSIX Shell Automation: Administrative Scripts}
 
-The Unix philosophy dictates that tools should "do one thing and do it well." Git exposes a vast array of "plumbing" commands designed specifically for shell scripting. The following custom bash scripts demonstrate the orchestration of Git within a Linux environment to automate repository health and auditing.
+The Unix philosophy dictates that tools should "do one thing and do it well." The five scripts
+developed for this audit demonstrate practical Linux administration and shell scripting concepts,
+from reading system identity to interactive user-driven file generation. Each script is
+documented below with its full source code, an explanation of its purpose, and the shell
+constructs it employs.
 
-\subsection{1. Recursive Cryptographic State Auditor}
-\textbf{Algorithmic Rationale:} In distributed microservice architectures, developers manage dozens of discrete repositories. This script performs a recursive traversal of the directory tree, executing a status check in $O(M)$ time (where $M$ is the number of initialized repositories), bypassing directories lacking a \texttt{.git} metadata folder to conserve CPU cycles.
+% ------------------------------------------------------------------
+\subsection{Script 1 — System Identity Report}
+% ------------------------------------------------------------------
 
-\begin{lstlisting}[language=bash, caption={git-recursive-audit.sh}]
+\textbf{Purpose:} Acts as an administrative welcome screen for the audit environment. The script
+dynamically collects kernel, user, uptime, and distribution information, then displays it in a
+structured format. It concludes with a message identifying the GPLv2 license covering the
+underlying Linux OS — directly relevant to the open-source audit context.
+
+\textbf{Shell Concepts Used:} Variables, command substitution \texttt{\$(...)}, \texttt{echo}
+with formatted output, and reading structured files with \texttt{grep} and \texttt{cut}.
+
+\begin{lstlisting}[language=bash, caption={01\_system\_identity.sh — System Identity Report}]
 #!/bin/bash
-# Recursively audits the local filesystem for uncommitted state changes
-echo "Initiating recursive repository audit..."
+# Script 1: System Identity Report
+# Author: Ekjot Singh | Roll: 24BCE10284 | Course: Open Source Software
+# Description: Displays a welcome screen with system identity
+#              and OS license information.
+# Concepts: Variables, command substitution $(), echo, output formatting.
 
-find . -maxdepth 3 -type d -name ".git" | while read -r repo_path; do
-    work_dir=$(dirname "$repo_path")
-    # Redirect stderr to /dev/null to suppress permission warnings
-    if [[ -n $(git -C "$work_dir" status --porcelain 2>/dev/null) ]]; then
-        echo -e "[\033[31mDIRTY\033[0m] $work_dir requires commit reconciliation."
-    else
-        echo -e "[\033[32mCLEAN\033[0m] $work_dir"
-    fi
-done
+# --- Variables: storing static audit metadata ---
+STUDENT_NAME="Ekjot Singh"
+SOFTWARE_CHOICE="Git"
+
+# --- Command substitution: dynamically fetching live system data ---
+KERNEL=$(uname -r)
+USER_NAME=$(whoami)
+USER_HOME=$HOME
+UPTIME=$(uptime -p)
+CURRENT_DATE=$(date +"%A, %B %d, %Y %T")
+
+# Reading the distribution name from the standard os-release file.
+# grep finds the PRETTY_NAME line; cut extracts the value between quotes.
+DISTRO=$(grep '^PRETTY_NAME' /etc/os-release | cut -d'"' -f2)
+
+# --- Display: formatted output using echo ---
+echo "=================================================="
+echo " Open Source Audit - $STUDENT_NAME"
+echo " Focus Software: $SOFTWARE_CHOICE"
+echo "=================================================="
+echo "Date/Time  : $CURRENT_DATE"
+echo "Distro     : $DISTRO"
+echo "Kernel     : $KERNEL"
+echo "User       : $USER_NAME"
+echo "Home Dir   : $USER_HOME"
+echo "Uptime     : $UPTIME"
+echo "--------------------------------------------------"
+# Explicitly stating the open-source license governing the OS
+echo "License    : The Linux kernel is released under the"
+echo "             GNU General Public License v2 (GPLv2)."
+echo "             Source code must remain freely available."
+echo "=================================================="
 \end{lstlisting}
 
-\subsection{2. Atomic Branch Garbage Collection}
-\textbf{Algorithmic Rationale:} Over time, the local DAG accumulates stale branch pointers that have already been integrated into the \texttt{main} trunk. This script queries the DAG for branches whose \texttt{HEAD} commit is an ancestor of the current trunk, safely executing an atomic deletion.
+% ------------------------------------------------------------------
+\subsection{Script 2 — FOSS Package Inspector}
+% ------------------------------------------------------------------
 
-\begin{lstlisting}[language=bash, caption={git-branch-purge.sh}]
+\textbf{Purpose:} Checks whether the chosen software (Git) is installed on the system,
+retrieves its version and description using the \texttt{dpkg} package manager, and uses a
+\texttt{case} statement to print a philosophical note about the package's role in the
+open-source ecosystem.
+
+\textbf{Shell Concepts Used:} \texttt{if-then-else} for conditional logic, \texttt{case}
+statement for multi-branch decisions, \texttt{dpkg} with \texttt{grep -E} for structured
+package queries, and output redirection with \texttt{\&>/dev/null} to suppress errors.
+
+\begin{lstlisting}[language=bash, caption={02\_package\_inspector.sh — FOSS Package Inspector}]
 #!/bin/bash
-# Safely purges local branch pointers that are fully merged into HEAD
-PROTECTED_BRANCHES="main\|master\|develop"
+# Script 2: FOSS Package Inspector
+# Author: Ekjot Singh | Roll: 24BCE10284
+# Description: Inspects whether the target FOSS package is installed,
+#              retrieves its version, and prints its ecosystem philosophy.
+# Concepts: if-then-else, case statement, dpkg, grep -E pipe.
 
-echo "Calculating merged graph traversals..."
-git branch --merged | grep -v "\*" | grep -v -E "$PROTECTED_BRANCHES" | while read -r branch; do
-    echo "Purging obsolete pointer: $branch"
-    git branch -d "$branch"
-done
-echo "Garbage collection complete."
-\end{lstlisting}
+PACKAGE="git"
 
-\subsection{3. Immutable State Backup Generator}
-\textbf{Algorithmic Rationale:} While Git is distributed, local disk failure remains a threat vector. This script bypasses standard file copying and directly archives the \texttt{.git} object store using the \texttt{tar} utility and \texttt{gzip} compression, creating an offline, cryptographically verifiable backup payload.
+echo "Inspecting system for FOSS package: $PACKAGE..."
+echo "------------------------------------------------"
 
-\begin{lstlisting}[language=bash, caption={git-cold-storage.sh}]
-#!/bin/bash
-# Archives the repository's cryptographic object database for cold storage
-REPO_NAME=$(basename "$(pwd)")
-TIMESTAMP=$(date +%s)
-BACKUP_PATH="$HOME/git_archives/${REPO_NAME}_${TIMESTAMP}.tar.gz"
-
-mkdir -p "$HOME/git_archives"
-# Archive only the metadata directory, ignoring the working tree
-tar -czf "$BACKUP_PATH" .git/
-echo "Cryptographic backup securely generated at: $BACKUP_PATH"
-\end{lstlisting}
-
-\subsection{4. Contributor Velocity and Log Parsing}
-\textbf{Algorithmic Rationale:} Open-source auditing requires transparency. This script pipes the output of \texttt{git log} through standard POSIX text manipulation utilities (\texttt{sort}, \texttt{uniq}) to calculate the statistical distribution of commits per author, functioning as a lightweight data mining tool.
-
-\begin{lstlisting}[language=bash, caption={git-velocity-metric.sh}]
-#!/bin/bash
-# Calculates commit distribution across authors for the trailing 30-day epoch
-echo "--- Developer Velocity Metrics (30 Days) ---"
-git log --since="30 days ago" --format='%aN' | sort | uniq -c | sort -nr | awk '{printf "Commits: %-5s Author: %s\n", $1, $2}'
-echo "--------------------------------------------"
-\end{lstlisting}
-
-\newpage
-\subsection{5. Standardized Deployment Bootstrapper}
-\textbf{Algorithmic Rationale:} This script ensures environmental consistency by atomically generating a new repository, writing standardized ignore rules to prevent pollution of the object database with build artifacts, and establishing the initial root commit.
-
-\begin{lstlisting}[language=bash, caption={git-bootstrap-env.sh}]
-#!/bin/bash
-# Initializes a repository with strict baseline configurations
-set -e # Abort on any non-zero exit code
-
-PROJECT_ROOT=$1
-if [[ -z "$PROJECT_ROOT" ]]; then
-    echo "Fatal: Project identifier required."
-    exit 1
+# if-then-else: check installation status.
+# dpkg -s returns exit code 0 if installed, non-zero if not.
+# &>/dev/null redirects both stdout and stderr to suppress noisy output.
+if dpkg -s "$PACKAGE" &>/dev/null; then
+    echo "[SUCCESS] $PACKAGE is installed on this system."
+    # Pipe dpkg output through grep with extended regex to extract
+    # Version and Description fields only.
+    dpkg -s "$PACKAGE" | grep -E '^Version|^Description'
+else
+    echo "[WARNING] $PACKAGE is NOT installed."
+    echo "          Install it with: sudo apt install $PACKAGE"
 fi
 
-mkdir -p "$PROJECT_ROOT" && cd "$PROJECT_ROOT"
-git init --quiet
+echo "------------------------------------------------"
 
-# Generate baseline exclusion definitions
-cat <<EOF > .gitignore
-# Compilation artifacts
-*.o
-*.so
-target/
-# Environment mappings
-.env
-EOF
+# case statement: print a philosophy note based on the package name.
+# This demonstrates multi-branch decision making without chained if-elif.
+case $PACKAGE in
+    git)
+        echo "Git: The decentralized engine of global collaboration" \
+             "and code sovereignty."
+        ;;
+    apache2|httpd)
+        echo "Apache: The web server that built the open internet."
+        ;;
+    mysql|mariadb-server)
+        echo "MySQL: Open source at the heart of millions of apps."
+        ;;
+    vlc)
+        echo "VLC: The universal media player — free from proprietary codecs."
+        ;;
+    *)
+        echo "An open-source tool contributing to the vast Linux ecosystem."
+        ;;
+esac
+\end{lstlisting}
 
-git add .gitignore
-git commit -m "chore: establish repository architecture and exclusion baseline"
-echo "Repository $PROJECT_ROOT successfully initialized."
+% ------------------------------------------------------------------
+\subsection{Script 3 — Disk and Permission Auditor}
+% ------------------------------------------------------------------
+
+\textbf{Purpose:} Iterates through a predefined list of critical Linux directories and
+reports their POSIX permissions, ownership, and disk usage. A separate block then checks
+for Git's specific system-level configuration file. This script is directly relevant to the
+Linux Footprint section of the audit (Part B).
+
+\textbf{Shell Concepts Used:} \texttt{for} loop over an array, \texttt{[ -d ]} and
+\texttt{[ -f ]} conditional tests, \texttt{du -sh} for disk usage, \texttt{ls -ld} with
+\texttt{awk} to extract permission fields.
+
+\begin{lstlisting}[language=bash, caption={03\_disk\_auditor.sh — Disk and Permission Auditor}]
+#!/bin/bash
+# Script 3: Disk and Permission Auditor
+# Author: Ekjot Singh | Roll: 24BCE10284
+# Description: Audits key Linux directories for permissions, ownership,
+#              and disk usage. Also checks Git's config footprint.
+# Concepts: for loop, arrays, [ -d ] test, du, ls -ld, awk, cut.
+
+# Define the audited software for labelling purposes
+SOFTWARE_CHOICE="Git"
+
+# Array of critical system directories to audit
+DIRS=("/etc" "/var/log" "/home" "/usr/bin" "/tmp")
+
+echo "========================================"
+echo " Directory Audit Report"
+echo "========================================"
+
+# for loop: iterate through every directory in the array
+for DIR in "${DIRS[@]}"; do
+    # Conditional test: [ -d ] returns true if path is a directory
+    if [ -d "$DIR" ]; then
+        # awk extracts columns 1 (permissions), 3 (owner), 4 (group)
+        # from ls -ld long-format output
+        PERMS=$(ls -ld "$DIR" | awk '{print $1, $3, $4}')
+        # du -sh gives human-readable size; cut -f1 takes just the number
+        SIZE=$(du -sh "$DIR" 2>/dev/null | cut -f1)
+        echo "$DIR"
+        echo "  Permissions/Owner : $PERMS"
+        echo "  Disk Usage        : $SIZE"
+        echo "----------------------------------------"
+    else
+        echo "$DIR — does not exist on this system"
+        echo "----------------------------------------"
+    fi
+done
+
+echo ""
+echo "Checking $SOFTWARE_CHOICE system configuration footprint..."
+echo "========================================"
+
+# [ -f ] tests for a regular file (not a directory)
+GIT_CONFIG="/etc/gitconfig"
+GIT_BIN="/usr/bin/git"
+
+if [ -f "$GIT_CONFIG" ]; then
+    GIT_PERMS=$(ls -ld "$GIT_CONFIG" | awk '{print $1, $3, $4}')
+    echo "$GIT_CONFIG => $GIT_PERMS"
+else
+    echo "Global Git config ($GIT_CONFIG) not found on this system."
+fi
+
+if [ -f "$GIT_BIN" ]; then
+    BIN_PERMS=$(ls -ld "$GIT_BIN" | awk '{print $1, $3, $4}')
+    echo "$GIT_BIN => $BIN_PERMS"
+else
+    echo "Git binary ($GIT_BIN) not found."
+fi
+\end{lstlisting}
+
+% ------------------------------------------------------------------
+\subsection{Script 4 — Log File Analyzer}
+% ------------------------------------------------------------------
+
+\textbf{Purpose:} Reads a system log file line by line, counts how many lines contain a
+specified keyword (defaulting to \texttt{error}), and prints a summary alongside the five
+most recent matching lines. It includes a do-while style retry loop that prompts the user
+for a valid file path if the original argument is missing or empty.
+
+\textbf{Shell Concepts Used:} \texttt{while read} loop for safe line-by-line file parsing,
+\texttt{if-then} inside a loop, counter variables with arithmetic expansion
+\texttt{\$((COUNT + 1))}, command-line positional arguments \texttt{\$1}/\texttt{\$2} with
+default values, and \texttt{tail | grep} pipeline for extracting recent anomalies.
+
+\begin{lstlisting}[language=bash, caption={04\_log\_analyzer.sh — Log File Analyzer}]
+#!/bin/bash
+# Script 4: Log File Analyzer
+# Author: Ekjot Singh | Roll: 24BCE10284
+# Usage: ./04_log_analyzer.sh /var/log/syslog error
+# Description: Scans a log file for a keyword, counts occurrences,
+#              and extracts the 5 most recent matching lines.
+# Concepts: while-read loop, if-then, counter vars, $1/$2 args,
+#           do-while style retry, tail+grep pipeline.
+
+# Positional arguments with default fallback values using :-
+LOGFILE=${1:-"/var/log/syslog"}
+KEYWORD=${2:-"error"}   # Default keyword if none provided
+COUNT=0                 # Counter variable, initialised to zero
+
+# Do-while style retry: keep prompting until a valid non-empty file is given.
+# [ ! -s ] is true when the file does not exist OR is empty (size = 0).
+while [ ! -s "$LOGFILE" ]; do
+    echo "Error: File '$LOGFILE' is missing or empty."
+    read -p "Please enter a valid log file path: " LOGFILE
+done
+
+echo "Scanning '$LOGFILE' for keyword: '$KEYWORD'..."
+echo "------------------------------------------------"
+
+# while IFS= read -r LINE: reads the file line by line safely,
+# preserving whitespace (IFS=) and backslashes (-r).
+while IFS= read -r LINE; do
+    # if-then: check each line for keyword match (case-insensitive with -i)
+    if echo "$LINE" | grep -iq "$KEYWORD"; then
+        # Arithmetic expansion increments the counter
+        COUNT=$((COUNT + 1))
+    fi
+done < "$LOGFILE"
+
+echo "Keyword '$KEYWORD' found $COUNT times in $LOGFILE"
+echo "------------------------------------------------"
+
+# Print last 5 matching lines using tail + grep pipeline
+if [ "$COUNT" -gt 0 ]; then
+    echo "Last 5 occurrences:"
+    grep -i "$KEYWORD" "$LOGFILE" | tail -n 5
+else
+    echo "No occurrences of '$KEYWORD' found."
+fi
+\end{lstlisting}
+
+% ------------------------------------------------------------------
+\subsection{Script 5 — Open Source Manifesto Generator}
+% ------------------------------------------------------------------
+
+\textbf{Purpose:} An interactive script that collects three user responses about open-source
+philosophy and composes a personalised manifesto paragraph, saving it to a \texttt{.txt}
+file. It demonstrates user input, string concatenation, file redirection, and the
+\texttt{alias} concept relevant to Unit 5 of the course.
+
+\textbf{Shell Concepts Used:} \texttt{read} for interactive user input, string concatenation
+via variable expansion, file creation/overwrite with \texttt{>} and append with \texttt{>>},
+\texttt{date} command substitution, and a live \texttt{alias} declaration demonstrating
+the alias concept.
+
+\begin{lstlisting}[language=bash, caption={05\_manifesto\_generator.sh — Open Source Manifesto Generator}]
+#!/bin/bash
+# Script 5: Open Source Manifesto Generator
+# Author: Ekjot Singh | Roll: 24BCE10284
+# Description: Interactively generates a personalised open-source
+#              philosophy manifesto and saves it to a .txt file.
+# Concepts: read (user input), string concatenation, > and >> redirection,
+#           date command, alias declaration.
+
+# --- Alias concept demonstration ---
+# An alias maps a long command to a short custom label.
+# Here we define 'today' as a short alias for a formatted date command.
+# In a login shell, aliases are typically stored in ~/.bashrc or ~/.bash_aliases.
+alias today='date "+%d %B %Y"'
+
+echo "=================================================="
+echo " Open Source Manifesto Generator"
+echo "=================================================="
+echo "Answer three questions to generate your manifesto."
+echo ""
+
+# read -p: displays the prompt and waits for user input.
+# The response is stored in the named variable.
+read -p "1. Name one open-source tool you use every day: " TOOL
+read -p "2. In one word, what does 'freedom' mean to you? " FREEDOM
+read -p "3. Name one thing you would build and share freely: " BUILD
+
+# Command substitution: capture the current date into a variable
+DATE=$(date '+%d %B %Y')
+
+# Output filename includes the current username for personalisation
+OUTPUT="manifesto_$(whoami).txt"
+
+echo ""
+echo "Composing your manifesto..."
+echo "--------------------------------------------------"
+
+# > operator: creates the file (or overwrites it if it already exists)
+# Writing the header block line by line
+echo "=== My Open Source Manifesto ===" > "$OUTPUT"
+echo "Author : $(whoami)"               >> "$OUTPUT"
+echo "Date   : $DATE"                   >> "$OUTPUT"
+echo ""                                 >> "$OUTPUT"
+
+# >> operator: appends the manifesto paragraph to the file without overwriting.
+# String concatenation is achieved by embedding variables directly
+# inside a double-quoted echo string.
+echo "I believe that software should empower rather than restrict. \
+The tool I rely on daily, $TOOL, represents this philosophy perfectly. \
+To me, open source is synonymous with $FREEDOM — it ensures that code \
+remains a public good, not a locked box. Standing on the shoulders of \
+the community, I pledge to build $BUILD and share it freely, so others \
+may learn from my work just as I have learned from theirs." >> "$OUTPUT"
+
+echo "--------------------------------------------------"
+echo "Manifesto saved to: $OUTPUT"
+echo "--------------------------------------------------"
+
+# Display the completed file using cat
+cat "$OUTPUT"
 \end{lstlisting}
