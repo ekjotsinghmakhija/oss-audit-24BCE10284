@@ -1,32 +1,142 @@
 \section{Algorithmic and Operational Comparative Analysis}
 
-To objectively audit Git's utility, it must be juxtaposed against proprietary, centralized architectures such as Perforce (Helix Core) or Subversion (SVN).
+To objectively audit Git's utility, it must be juxtaposed against proprietary, centralized
+architectures. This section compares Git against Perforce (Helix Core), one of the leading
+enterprise version control systems used in large-scale commercial software development.
 
-\subsection{Computational Complexity of Operations}
-In centralized systems, creating a branch requires copying files or creating server-side metadata links, often resulting in network latency and an operational complexity of $O(N)$ relative to project size. 
-Conversely, a branch in Git is merely a 40-character file containing a SHA-1 pointer to a commit node in the DAG. Therefore, branching and checking out local states in Git executes in $O(1)$ time, independent of the repository's volume.
+% ------------------------------------------------------------------
+\subsection{Structured Comparison: Git vs Perforce}
+% ------------------------------------------------------------------
+
+The table below directly evaluates the two systems across the six dimensions specified in
+the course framework.
+
+\begin{table}[h!]
+\centering
+\small
+\renewcommand{\arraystretch}{1.6}
+\begin{tabular}{@{}p{3.2cm} p{5.5cm} p{5.5cm}@{}}
+\toprule
+\textbf{Dimension} & \textbf{Git (Open Source)} & \textbf{Perforce / Helix Core (Proprietary)} \\
+\midrule
+
+\textbf{Cost} &
+Completely free to download, use, host, and distribute. Hosting platforms (GitLab CE, Gitea)
+are also open source. No per-seat licensing fees. &
+Commercial per-user licensing model. Costs scale steeply with team size. Free tier is
+limited to 5 users and 20 workspaces — impractical for enterprise teams. \\
+
+\textbf{Security — who can audit the code?} &
+Full source code is publicly available on kernel.org and GitHub. Any security researcher
+globally can audit, find vulnerabilities, and propose patches. CVEs are fixed rapidly by
+the open community. &
+Closed-source. Security audits are only possible by Perforce employees or under strict
+NDA agreements. Users must \emph{trust} the vendor's security claims without independent
+verification. \\
+
+\textbf{Support and reliability} &
+Community-driven support via mailing lists, Stack Overflow, and GitHub Discussions.
+No guaranteed SLA, but responses are typically fast due to the large global user base.
+Corporate support is available via GitHub Enterprise or GitLab. &
+Dedicated enterprise support with formal SLAs. Perforce offers professional services,
+onboarding, and training — better for organizations requiring contractual guarantees. \\
+
+\textbf{Freedom to modify} &
+GPLv2 guarantees the right to inspect, modify, and redistribute the source code.
+Organizations can fork Git and adapt it to their infrastructure without permission. &
+No freedom to modify. The binary-only model means users are entirely dependent on
+Perforce's roadmap. Feature requests must be submitted to the vendor and may take years
+to implement, if at all. \\
+
+\textbf{Community vs corporate control} &
+Governed by the Software Freedom Conservancy and maintained by a global meritocracy
+led by Junio C Hamano. No single corporation controls the roadmap. Corporate influence
+exists but cannot override the technical community's consensus. &
+Entirely controlled by Perforce Software Inc. Business decisions, pricing changes, and
+feature priorities are determined by corporate strategy — not user needs. The 2014
+acquisition by private equity illustrates this vulnerability. \\
+
+\textbf{Overall verdict} &
+\multicolumn{2}{p{11cm}}{Git is the clear recommendation for the vast majority of software projects. Its
+decentralized model, zero cost, cryptographic integrity, and GPLv2 freedom make it
+architecturally superior for open collaboration. Perforce retains a legitimate edge in
+environments managing extremely large binary assets (game development, embedded firmware)
+where Git's object model becomes inefficient — but this is a narrow exception, not the rule.} \\
+
+\bottomrule
+\end{tabular}
+\caption{Comparative Analysis: Git (Open Source) vs Perforce Helix Core (Proprietary)}
+\end{table}
+
+% ------------------------------------------------------------------
+\subsection{Computational Complexity of Core Operations}
+% ------------------------------------------------------------------
+
+Beyond cost and licensing, the architectural differences between centralized and
+decentralized systems produce measurable performance differences at the algorithmic level.
+
+In centralized systems like Perforce, creating a branch requires copying server-side
+metadata or file trees, producing an operational complexity of $O(N)$ relative to project
+size.
+
+A branch in Git, by contrast, is merely a 41-byte file containing a single SHA-1 pointer
+to a commit node in the Directed Acyclic Graph. Branch creation and checkout execute in
+$O(1)$ time, entirely independent of the repository's volume. This is not an incremental
+improvement — it is a fundamentally different computational model.
 
 \begin{table}[h!]
 \centering
 \small
 \begin{tabular}{@{}lll@{}}
 \toprule
-\textbf{Architectural Metric} & \textbf{Git (Decentralized CAS)} & \textbf{Perforce (Centralized RDBMS)} \\ \midrule
-\textbf{Concurrency Model} & Lock-free (Optimistic Merging) & File Locking (Pessimistic) \\
-\textbf{Branching Complexity} & $O(1)$ (Pointer manipulation) & $O(N)$ (Server metadata mapping) \\
-\textbf{Network Dependency} & Zero (Offline-First local DAG) & Absolute (Requires Server ping) \\
-\textbf{Cryptographic Audit} & Intrinsic (SHA-1/256 chains) & Extrinsic (Server logs) \\
-\textbf{Binary Asset Scaling} & Inefficient (Requires LFS extension) & Highly Efficient \\ \bottomrule
+\textbf{Operation} & \textbf{Git (Decentralized CAS)} & \textbf{Perforce (Centralized RDBMS)} \\
+\midrule
+Branching complexity     & $O(1)$ — pointer manipulation      & $O(N)$ — server metadata copy \\
+Network dependency       & Zero — offline-first local DAG      & Absolute — requires server ping \\
+Concurrency model        & Lock-free (optimistic merging)      & File locking (pessimistic) \\
+Cryptographic audit      & Intrinsic — SHA-1/256 chains        & Extrinsic — server logs only \\
+Binary asset performance & Inefficient (requires LFS extension) & Highly efficient natively \\
+\bottomrule
 \end{tabular}
-\caption{Algorithmic Comparison of Version Control Systems}
+\caption{Algorithmic Comparison of Version Control Architectures}
 \end{table}
 
-\subsection{The Pessimistic vs. Optimistic Concurrency Paradigm}
-Proprietary systems historically utilize \textit{pessimistic concurrency}—a developer must request a "lock" on a file from the central server before editing it. This prevents merge conflicts but creates severe developmental bottlenecks.
-Git employs \textit{optimistic concurrency}. Multiple developers edit the same file simultaneously offline. Git utilizes advanced three-way merge algorithms to reconcile the divergent DAG paths computationally. If a mathematical reconciliation is impossible, it delegates the resolution to the human operator. This paradigm shift prioritizes developer velocity over absolute collision prevention.
+% ------------------------------------------------------------------
+\subsection{The Pessimistic vs Optimistic Concurrency Paradigm}
+% ------------------------------------------------------------------
 
-\newpage
-\subsection{Final Verdict and Contribution Directive}
-Given the comprehensive findings of this audit, I unconditionally recommend Git for real-world enterprise deployment. The proprietary alternatives, while perhaps marginally superior for managing monolithic binary assets, enforce a "vendor lock-in" paradigm that fundamentally compromises an organization's digital sovereignty. Git’s decentralized topology ensures that a network outage or a vendor licensing dispute cannot halt engineering operations. By leveraging its content-addressable storage model and cryptographic immutability, an organization guarantees that its intellectual property remains secure, verifiable, and perpetually accessible.
+Proprietary systems historically employ \emph{pessimistic concurrency}: a developer
+requests a file lock from the central server before editing. This eliminates merge
+conflicts but creates severe bottlenecks — only one developer can work on a file at a
+time, and a network outage halts the entire team.
 
-Furthermore, analyzing this architecture has solidified my intent to actively contribute to the open-source ecosystem. As I develop independent tools—such as algorithmic scheduling systems or decentralized applications—I recognize that my work stands upon the foundational labor of the Git community. Contributing to open source, whether by submitting bug reports to the Git mailing list or open-sourcing my own peripheral shell tooling, is not merely an educational exercise; it is an ethical obligation to maintain the digital commons that powers modern computational science.
+Git uses \emph{optimistic concurrency}. Multiple developers edit the same file
+simultaneously on their local machines. Git's three-way merge algorithm reconciles
+divergent DAG paths computationally when changes are pushed. If the algorithm cannot
+resolve a conflict automatically, it delegates to the human operator. This model
+prioritizes development velocity and resilience over collision prevention.
+
+In practice, well-structured teams using feature branches experience merge conflicts
+rarely. The theoretical risk of optimistic concurrency is far outweighed by the daily
+productivity gains.
+
+% ------------------------------------------------------------------
+\subsection{Final Verdict and Contribution Statement}
+% ------------------------------------------------------------------
+
+Given the comprehensive findings of this audit, I unconditionally recommend Git for
+real-world deployment. The proprietary alternatives, while marginally superior for
+managing monolithic binary repositories, enforce a vendor lock-in model that
+fundamentally compromises an organization's digital sovereignty.
+
+Git's decentralized topology ensures that a network outage or a vendor licensing
+dispute — exactly the scenario that created Git in the first place — cannot halt
+engineering operations. Its content-addressable storage model and cryptographic commit
+chain guarantee that intellectual property remains secure, verifiable, and perpetually
+accessible without dependence on a third party.
+
+I also intend to contribute to the open-source ecosystem as I develop my own tools.
+Analyzing Git's architecture has made clear that my future work will stand directly on
+the labor of this community. Contributing back — whether through bug reports, documentation
+improvements, or open-sourcing peripheral tooling — is not just a good practice.
+It is the ethical obligation that the GPLv2 was designed to encode into law.
